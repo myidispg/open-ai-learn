@@ -21,7 +21,7 @@ print("State size: ", state_size)
 
 qtable = np.zeros((state_size, action_size))
 
-total_episodes = 500000  # Total training episodes
+total_episodes = 50000  # Total training episodes
 total_test_episodes = 100 # Test epsiode
 max_steps = 99 # Max steps per episode
 
@@ -42,7 +42,6 @@ for episode in range(total_episodes):
     state = env.reset()
     step = 0
     done = False
-    total_rewards = 0
     
     for step in range(max_steps):
         # 3. Choose an action a in the current world state (s)
@@ -62,7 +61,6 @@ for episode in range(total_episodes):
         # qtable[new_state,:] : all the actions we can take from new state
         qtable[state, action] = qtable[state, action] + learning_rate * (reward + gamma * np.max(qtable[new_state, :]) - qtable[state, action])
         
-        total_rewards += reward
         
         # Our new state is current state now
         state = new_state
@@ -71,9 +69,40 @@ for episode in range(total_episodes):
         if done == True: 
             break
         
-        # Reduce epsilon (because as level progresses, exploration must reduce.)
-        epsilon = min_epsilon + (max_epsilon - min_epsilon)*np.exp(-decay_rate*episode)
+    episode += 1
+    # Reduce epsilon (because as level progresses, exploration must reduce.)
+    epsilon = min_epsilon + (max_epsilon - min_epsilon)*np.exp(-decay_rate*episode)
         
-        rewards.append(total_rewards)
+    print("Episode: ", episode)
     print ("Score over time: " +  str(sum(rewards)/total_episodes))
     print(qtable)
+    
+env.reset()
+rewards = []
+
+for episode in range(total_test_episodes):
+    state = env.reset()
+    step = 0
+    done = False
+    total_rewards = 0
+    print("****************************************************")
+    print("EPISODE ", episode)
+
+    for step in range(max_steps):
+        env.render()
+        # Take the action (index) that have the maximum expected future reward given that state
+        action = np.argmax(qtable[state,:])
+        
+        new_state, reward, done, info = env.step(action)
+        
+        total_rewards += reward
+        if done:
+            
+            rewards.append(total_rewards)
+            # We print the number of step it took.
+            print("Score: ", step)
+            break
+        state = new_state
+env.close()
+
+print("Total rewards over time: " + str(sum(rewards)/total_test_episodes))
