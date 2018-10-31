@@ -43,4 +43,12 @@ for episode in range(total_episodes):
         exploration_exploitation_tradeoff = random.uniform(0, 1)
         
         if exploration_exploitation_tradeoff > epsilon: # Exploit
+            action = np.argmax(qtable[state, :]) 
+        else:
+            action = env.action_space.sample
             
+        new_state, new_reward, done, info = env.step(action)
+        
+        qtable[state, action] = qtable[state, action] + learning_rate * (new_reward + gamma * np.max(qtable[new_state, :]) + qtable[state, :])
+        
+        
