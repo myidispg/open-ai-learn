@@ -94,7 +94,7 @@ for episode in range(5):
         
         # Take the action from the trained q table
         action = np.argmax(qtable[state, :])
-        print('action for episode ' + str(episode) + ' is ' + str(action))
+        # print('action for episode ' + str(episode) + ' is ' + str(action))
         
         new_state, reward, done, info = env.step(action)
         
