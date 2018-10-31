@@ -70,10 +70,10 @@ for episode in range(total_episodes):
         if done == True: 
             break
         
-        # Reduce epsilon (because as level progresses, exploration must reduce.)
-        epsilon = min_epsilon + (max_epsilon - min_epsilon)*np.exp(-decay_rate*episode)
+    # Reduce epsilon (because as level progresses, exploration must reduce.)
+    epsilon = min_epsilon + (max_epsilon - min_epsilon)*np.exp(-decay_rate*episode)
         
-        rewards.append(total_rewards)
+    rewards.append(total_rewards)
     print ("Score over time: " +  str(sum(rewards)/total_episodes))
     print(qtable)
             
