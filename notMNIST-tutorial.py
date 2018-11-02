@@ -91,6 +91,15 @@ test_folders = maybe_extract(test_filename)
 image_size = 28  # Pixel width and height.
 pixel_depth = 255.0  # Number of levels per pixel.
 
+#---------Display an image from each folder---------------------
+def display_one_image_from_folder(folder_list):
+    import random
+    for folder in folder_list:
+        contents = os.listdir(folder)
+        display(Image(filename = contents[random.randint(len(folder))]))
+    
+display_one_image_from_folder(test_folders)
+
 def load_letter(folder, min_num_images):
   """Load the data for a single letter label."""
   image_files = os.listdir(folder)
