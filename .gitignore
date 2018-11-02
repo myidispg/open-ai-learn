@@ -1,2 +1,4 @@
 *.tar.gz
 /Tensorflow/notMNIST_large
+/Tensorflow/notMNIST_small
+
