@@ -174,7 +174,83 @@ with tf.Session(graph=graph) as session:
     print("Test accuracy: %.1f%%" % accuracy(test_prediction.eval(), test_labels))
     
     
+#  ------------------------Training a neural network on the dataset ---------------
+n_input = image_size * image_size
+n_output = num_labels
+n_hidden1 = 256
+n_hidden2 = 64
+
+# Some parameters
+learning_rate = 0.4
+n_iteration = 1000
+batch_size =128
+dropout = 0.5
+
+graph_nn = tf.Graph()
+with graph_nn.as_default():
+    tf_train_dataset = tf.placeholder(tf.float32, [batch_size, n_input]) # 128x784
+    tf_train_labels = tf.placeholder(tf.float32, [batch_size, n_output]) # 128x10
+    tf_valid_dataset = tf.constant(valid_dataset)
+    tf_test_dataset = tf.constant(test_dataset)
     
+    keep_prob = tf.placeholder(tf.float32) # a tensor for the dropout rate which can be updated.
+    
+    weights = {
+            'w1': tf.Variable(tf.truncated_normal([n_input, n_hidden1])), # 784x256
+            'w2': tf.Variable(tf.truncated_normal([n_hidden1, n_hidden2])), # 256x64
+            'out': tf.Variable(tf.truncated_normal([n_hidden2, n_output])) # 64x10
+            }
+    biases = {
+            'b1': tf.Variable(tf.zeros([n_hidden1])), 
+            'b2': tf.Variable(tf.zeros([n_hidden2])),
+            'out': tf.Variable(tf.zeros([n_output]))
+            }
+    
+    layer_1 = tf.matmul(tf_train_dataset, weights['w1']) + biases['b1'] # 128x256 + 256x1   
+    layer_2 = tf.matmul(layer_1, weights['w2']) + biases['b2'] 
+    output_layer = tf.matmul(layer_2, weights['out']) + biases['out']
+    
+    loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=tf_train_labels, logits = output_layer))
+    
+    optimizer = tf.train.AdamOptimizer(1e-4).minimize(loss)
+    
+    # Predictions for training, test and validation dataset
+    train_prediction = tf.nn.softmax(output_layer)
+    
+    # for validation dataset predictions
+    valid_layer_1 = tf.matmul(tf_valid_dataset, weights['w1']) + biases['b1']
+    valid_layer_2 = tf.matmul(valid_layer_1, weights['w2']) + biases['b2']
+    valid_prediction = tf.nn.softmax(tf.matmul(valid_layer_2, weights['out']) + biases['out'])
+    
+    # for test dataset predictions
+    test_layer_1 = tf.matmul(tf_test_dataset, weights['w1']) + biases['b1']
+    test_layer_2 = tf.matmul(test_layer_1, weights['w2']) + biases['b2']
+    test_prediction = tf.nn.softmax(tf.matmul(test_layer_2, weights['out']) + biases['out'])
+    
+num_steps = 10000
+
+with tf.Session(graph=graph_nn) as sess:
+    # Initialize all the global variables in the graph.
+    tf.global_variables_initializer().run() 
+    print("Initialized")
+    for step in range(num_steps):
+        # Offset for batches
+        offset = (step * batch_size) % (train_labels.shape[0] - batch_size)
+        # Generate a minibatch
+        batch_data = train_dataset[offset:(offset + batch_size), :]
+        batch_labels = train_labels[offset:(offset + batch_size), :]
+        # Prepare a dictionary telling the session where to feed the minibatch.
+        # The key of the dictionary is the placeholder node of the graph to be fed,
+        # and the value is the numpy array to feed to it.
+        feed_dict = {tf_train_dataset : batch_data, tf_train_labels : batch_labels}
+        # Here only the batch that is generated will be fed to the 
+        # computational graph.
+        _, l, predictions = sess.run([optimizer, loss, train_prediction], feed_dict=feed_dict)
+        if (step % 200 == 0):
+            print('Minibatch loss at step %d: %f' % (step, l))
+            print("Minibatch accuracy: %.1f%%" % accuracy(predictions, batch_labels))
+            print("Validation accuracy: %.1f%%" % accuracy(valid_prediction.eval(), valid_labels))
+    print("Test accuracy: %.1f%%" % accuracy(test_prediction.eval(), test_labels))
     
 
 
