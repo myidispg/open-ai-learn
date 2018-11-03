@@ -74,7 +74,7 @@ with graph.as_default():
     # it cannot be optimized.) We take the average of this 
     # cross-entropy across all the training examples: that is our loss.
     logits = tf.matmul(tf_train_dataset, weights) + biases
-    loss = tf.reduce.mean(
+    loss = tf.reduce_mean(
             tf.nn.softmax_cross_entropy_with_logits(labels=tf_train_labels, logits=logits))
     
     # Optimizer
@@ -95,7 +95,7 @@ def accuracy(predictions, labels):
 with tf.Session(graph=graph) as session:
     # This is a one time operation which ensures the parameters get initialized as 
     # we described in the graph: random_weights for the matrix, zeros for the biases.
-    tf.global_variables_initializer.run()
+    tf.global_variables_initializer().run()
     print('Initialized')
     for step in range(num_steps):
         # Run the computations. We tell the .run() that we want to run the optimizer,
@@ -103,13 +103,56 @@ with tf.Session(graph=graph) as session:
         _, l, predictions = session.run([optimizer, loss, train_prediction])
         if step%100==0:
             print('Loss at step %d: %f' % (step, l))
-            print('Training accuracy- %.1f%%', % accuracy)
+            print('Training accuracy- %.1f%%' % accuracy(predictions, train_labels[:train_subset, :]))
             # Calling .eval() on valid_prediction is basically like calling run(), but 
             # just to get that one numpy array. Note that it recomputes all its graph
             # dependencies.
             print('Validation accuracy: %.1f%%' % accuracy(valid_prediction.eval(), valid_labels))
     print('Test accuracy: %.1f%%' % accuracy(test_prediction.eval(), test_labels))
-            
+
+# Now switch to Stochastic Gradient Descent
+# The graph will be similar, except that instead of holding all the training data into a constant node, 
+# we create a Placeholder node which will be fed actual data at every call of session.run().
+batch_size = 128
+
+graph = tf.Graph()
+with graph.as_default():
+    
+    # Input data. For training data, we use a placeholder that will be fed
+    # at run time with a training minibatch
+    tf_train_dataset = tf.placeholder(tf.float32, shape = [batch_size, image_size ^ 2]) # 128x784
+    tf_train_labels = tf.placeholder(tf.float32, shape= [batch_size, image_size ^ 2]) # 128x10
+    tf_valid_dataset = tf.constant(valid_dataset)
+    tf_test_dataset = tf.constant(test_dataset)
+    
+    # Variables
+    weights = tf.Variable(tf.truncated_normal([image_size^2, num_labels])) # 784x10
+    # truncated_normal gives random values with a normal distribution.
+    biases = tf.variable(tf.zeros([num_labels])) # 10
+    
+    # Training computation
+    logits = tf.matmul(tf_train_dataset * weights) + biases # Intermediate computation step. X*a + b = Y
+    loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=tf_train_labels, logits = logits))
+    # Cross-entropy sums along the rows. Softmax applies softmax function. Output is a single column.
+    # truncated_mean of a single column will return a single value 
+    # that is the mean of values along the column.
+    
+    # Optimizer
+    
+    optimizer = tf.train.GradientDescentOptimizer(0.5).minimize(loss)
+    # 0.5 is learning rate.
+    
+    # Predictions for training, test and validation dataset
+    train_prediction = tf.nn.softmax(logits)
+    valid_prediction = tf.nn.softmax(tf.matmul(tf_valid_dataset, weights) + biases)
+    test_prediction = tf.nn.softmax(tf.matmul(tf_test_dataset, weights) + biases)
+    
+num_steps = 3001
+
+with tf.Session(graph=graph) as session:
+    # Initialize all the global variables in the graph.
+    tf.global_variables_initializer().run() 
+    
     
     
     
