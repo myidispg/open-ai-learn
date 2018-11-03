@@ -120,18 +120,18 @@ with graph.as_default():
     
     # Input data. For training data, we use a placeholder that will be fed
     # at run time with a training minibatch
-    tf_train_dataset = tf.placeholder(tf.float32, shape = [batch_size, image_size ^ 2]) # 128x784
-    tf_train_labels = tf.placeholder(tf.float32, shape= [batch_size, image_size ^ 2]) # 128x10
+    tf_train_dataset = tf.placeholder(tf.float32, shape=(batch_size, image_size * image_size)) # 128x784
+    tf_train_labels = tf.placeholder(tf.float32, shape= [batch_size, num_labels]) # 128x10
     tf_valid_dataset = tf.constant(valid_dataset)
     tf_test_dataset = tf.constant(test_dataset)
     
     # Variables
-    weights = tf.Variable(tf.truncated_normal([image_size^2, num_labels])) # 784x10
+    weights = tf.Variable(tf.truncated_normal([image_size * image_size, num_labels])) # 784x10
     # truncated_normal gives random values with a normal distribution.
-    biases = tf.variable(tf.zeros([num_labels])) # 10
+    biases = tf.Variable(tf.zeros([num_labels])) # 10
     
     # Training computation
-    logits = tf.matmul(tf_train_dataset * weights) + biases # Intermediate computation step. X*a + b = Y
+    logits = tf.matmul(tf_train_dataset, weights) + biases # Intermediate computation step. X*a + b = Y
     loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=tf_train_labels, logits = logits))
     # Cross-entropy sums along the rows. Softmax applies softmax function. Output is a single column.
     # truncated_mean of a single column will return a single value 
@@ -152,7 +152,26 @@ num_steps = 3001
 with tf.Session(graph=graph) as session:
     # Initialize all the global variables in the graph.
     tf.global_variables_initializer().run() 
-    
+    print("Initialized")
+    for step in range(num_steps):
+        # Pick an offset within the training data, which has been randomized.
+        # Note: we could use better randomization across epochs.
+        offset = (step * batch_size) % (train_labels.shape[0] - batch_size)
+        # Generate a minibatch
+        batch_data = train_dataset[offset:(offset + batch_size), :]
+        batch_labels = train_labels[offset:(offset + batch_size), :]
+        # Prepare a dictionary telling the session where to feed the minibatch.
+        # The key of the dictionary is the placeholder node of the graph to be fed,
+        # and the value is the numpy array to feed to it.
+        feed_dict = {tf_train_dataset : batch_data, tf_train_labels : batch_labels}
+        # Here only the batch that is generated will be fed to the 
+        # computational graph.
+        _, l, predictions = session.run([optimizer, loss, train_prediction], feed_dict=feed_dict)
+        if (step % 500 == 0):
+            print('Minibatch loss at step %d: %f' % (step, l))
+            print("Minibatch accuracy: %.1f%%" % accuracy(predictions, batch_labels))
+            print("Validation accuracy: %.1f%%" % accuracy(valid_prediction.eval(), valid_labels))
+    print("Test accuracy: %.1f%%" % accuracy(test_prediction.eval(), test_labels))
     
     
     
