@@ -177,8 +177,7 @@ with tf.Session(graph=graph) as session:
 #  ------------------------Training a neural network on the dataset ---------------
 n_input = image_size * image_size
 n_output = num_labels
-n_hidden1 = 256
-n_hidden2 = 64
+n_hidden1 = 1024
 
 # Some parameters
 learning_rate = 0.4
@@ -196,19 +195,16 @@ with graph_nn.as_default():
     keep_prob = tf.placeholder(tf.float32) # a tensor for the dropout rate which can be updated.
     
     weights = {
-            'w1': tf.Variable(tf.truncated_normal([n_input, n_hidden1])), # 784x256
-            'w2': tf.Variable(tf.truncated_normal([n_hidden1, n_hidden2])), # 256x64
-            'out': tf.Variable(tf.truncated_normal([n_hidden2, n_output])) # 64x10
+            'w1': tf.Variable(tf.truncated_normal([n_input, n_hidden1])), # 784x1024
+            'out': tf.Variable(tf.truncated_normal([n_hidden1, n_output])) # 64x10
             }
     biases = {
             'b1': tf.Variable(tf.zeros([n_hidden1])), 
-            'b2': tf.Variable(tf.zeros([n_hidden2])),
             'out': tf.Variable(tf.zeros([n_output]))
             }
     
-    layer_1 = tf.matmul(tf_train_dataset, weights['w1']) + biases['b1'] # 128x256 + 256x1   
-    layer_2 = tf.matmul(layer_1, weights['w2']) + biases['b2'] 
-    output_layer = tf.matmul(layer_2, weights['out']) + biases['out']
+    layer_1 = tf.nn.relu(tf.matmul(tf_train_dataset, weights['w1']) + biases['b1']) # 128x1024 + 1024x1   
+    output_layer = tf.matmul(layer_1, weights['out']) + biases['out'] # 128x10 + 10x1
     
     loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=tf_train_labels, logits = output_layer))
     
@@ -218,17 +214,16 @@ with graph_nn.as_default():
     train_prediction = tf.nn.softmax(output_layer)
     
     # for validation dataset predictions
-    valid_layer_1 = tf.matmul(tf_valid_dataset, weights['w1']) + biases['b1']
-    valid_layer_2 = tf.matmul(valid_layer_1, weights['w2']) + biases['b2']
-    valid_prediction = tf.nn.softmax(tf.matmul(valid_layer_2, weights['out']) + biases['out'])
+    valid_layer_1 = tf.nn.relu(tf.matmul(tf_valid_dataset, weights['w1']) + biases['b1'])
+    valid_prediction = tf.nn.softmax(tf.matmul(valid_layer_1, weights['out']) + biases['out'])
     
     # for test dataset predictions
-    test_layer_1 = tf.matmul(tf_test_dataset, weights['w1']) + biases['b1']
-    test_layer_2 = tf.matmul(test_layer_1, weights['w2']) + biases['b2']
-    test_prediction = tf.nn.softmax(tf.matmul(test_layer_2, weights['out']) + biases['out'])
+    test_layer_1 = tf.nn.relu(tf.matmul(tf_test_dataset, weights['w1']) + biases['b1'])
+    test_prediction = tf.nn.softmax(tf.matmul(test_layer_1, weights['out']) + biases['out'])
     
 num_steps = 10000
 
+valid_scores = {}
 with tf.Session(graph=graph_nn) as sess:
     # Initialize all the global variables in the graph.
     tf.global_variables_initializer().run() 
@@ -250,6 +245,9 @@ with tf.Session(graph=graph_nn) as sess:
             print('Minibatch loss at step %d: %f' % (step, l))
             print("Minibatch accuracy: %.1f%%" % accuracy(predictions, batch_labels))
             print("Validation accuracy: %.1f%%" % accuracy(valid_prediction.eval(), valid_labels))
+            
+            valid_scores[step] = accuracy(valid_prediction.eval(), valid_labels)
+            
     print("Test accuracy: %.1f%%" % accuracy(test_prediction.eval(), test_labels))
     
 
