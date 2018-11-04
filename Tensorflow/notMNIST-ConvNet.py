@@ -61,34 +61,45 @@ graph = tf.Graph()
 with graph.as_default():
     
     # Input data
+    # shape- 16x28x28x1
     tf_train_dataset = tf.placeholder(tf.float32, shape=(batch_size, image_size, image_size, num_channels))
     tf_train_labels = tf.placeholder(tf.float32, shape=(batch_size, num_labels))
     tf_valid_dataset = tf.constant(valid_dataset)
     tf_test_dataset = tf.constant(test_dataset)
     
     # Variables
-    # shape- 5x5x1x16
+    # shape- 5x5x1x16 # Filter 1
+    # first and second are filter size, third is number of channels in the input image, last is no.
+    # of convolutional filters. Bias will have the same size as no. of conv filters.
     layer1_weights = tf.Variable(tf.truncated_normal([patch_size, patch_size, num_channels, depth], stddev=0.1))
     layer1_biases = tf.Variable(tf.zeros([depth])) # 1x16
-    # shape- 5x5x16x16
+    # shape- 5x5x16x16 # Filter 2
     layer2_weights = tf.Variable(tf.truncated_normal([patch_size, patch_size, depth, depth], stddev=0.1))
     layer2_biases = tf.Variable(tf.constant(1.0, shape=[depth])) # 1x16
-    # Shape- 784x64
+    # Shape- 784x64 # Filter 3
     layer3_weights = tf.Variable(tf.truncated_normal([image_size // 4 * image_size // 4 * depth, num_hidden], stddev=0.1))
     layer3_biases = tf.Variable(tf.constant(1.0, shape=[num_hidden])) # 1x16
-    # shape- 64x10
+    # shape- 64x10 # Filter 4
     layer4_weights = tf.Variable(tf.truncated_normal([num_hidden, num_labels], stddev=0.1))
     layer4_biases = tf.Variable(tf.constant(1.0, shape=[num_labels])) # 1x10
     
     # Model.
     def model(data):
+        # Format = input, kernel, dilation, padding. dilation's 1st and last number is always 1. 
+        # 1st number in dilation is image number, last is input channel. second and 3rd are strides.
         conv = tf.nn.conv2d(data, layer1_weights, [1, 2, 2, 1], padding='SAME')
         hidden = tf.nn.relu(conv + layer1_biases)
+        print(hidden.get_shape().as_list()) # dimensions = numberx14x14x16
         conv = tf.nn.conv2d(hidden, layer2_weights, [1, 2, 2, 1], padding='SAME')
         hidden = tf.nn.relu(conv + layer2_biases)
-        shape = hidden.get_shape().as_list()
+        print(hidden.get_shape().as_list())
+        shape = hidden.get_shape().as_list() # dimensions = numberx7x7x16
+        # reshape to dimnesion numberx64 to feed into NN.
         reshape = tf.reshape(hidden, [shape[0], shape[1] * shape[2] * shape[3]])
+        # 1st hidden layer in NN
         hidden = tf.nn.relu(tf.matmul(reshape, layer3_weights) + layer3_biases)
+        print(hidden.get_shape().as_list())
+        # Output layer.
         return tf.matmul(hidden, layer4_weights) + layer4_biases
     
     # Training computation.
@@ -121,3 +132,33 @@ with tf.Session(graph=graph) as session:
       print('Validation accuracy: %.1f%%' % accuracy(
         valid_prediction.eval(), valid_labels))
   print('Test accuracy: %.1f%%' % accuracy(test_prediction.eval(), test_labels))
+  
+#----CNN with Maxpooling ot subsample-------------------
+  
+def accuracy(predictions, labels):
+  return (100.0 * np.sum(np.argmax(predictions, 1) == np.argmax(labels, 1))
+          / predictions.shape[0])
+  
+batch_size = 16
+patch_size = 5
+depth = 16
+num_hidden = 64
+
+graph = tf.Graph()
+
+with graph.as_default():
+    tf_train_dataset = tf.placeholder(tf.float32, shape=[batch_size, image_size, image_size, num_channels])
+    tf_train_labels = tf.placeholder(tf.float32, shape=[batch_size, num_labels])
+    tf_valid_dataset = tf.constant(valid_dataset)
+    tf_test_dataset = tf.constant(test_dataset)
+    
+    # Some variables
+    # 1st filter = 5x5x1x16
+    # 2nd filter= 5x5x16x16
+    # 3rd filter = 
+    weights = {
+            'w1': tf.Variable(tf.truncated_normal([patch_size, patch_size, num_channels, depth], stddev = 0.1)),
+            'w2': tf.Variable(tf.truncated_normal([patch_size, patch_size, depth, depth], stddev = 0.1)),
+            'w3': tf.Variable(tf.truncated_normal([]))
+            }
+    
