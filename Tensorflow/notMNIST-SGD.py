@@ -348,7 +348,10 @@ with tf.Session(graph=graph_nn) as sess:
     print("Test accuracy: %.1f%%" % accuracy(test_prediction.eval(), test_labels))
     
     
-# Deep Neural Netword with 5 hidden layers, l2 regularization and dropout
+# Deep Neural Network with 5 hidden layers, l2 regularization and dropout
+
+import math    
+
 n_input = image_size * image_size
 n_output = num_labels
 n_hidden1 = 1024
@@ -372,14 +375,14 @@ with graph_dnn.as_default():
     tf_test_dataset = tf.constant(test_dataset)
     
     weights = {
-            'w1': tf.Variable(tf.truncated_normal([n_input, n_hidden1])), # 784x1024
-            'w2': tf.Variable(tf.truncated_normal([n_hidden1, n_hidden2])), # 1024x512
-            'w3': tf.Variable(tf.truncated_normal([n_hidden2, n_hidden3])), # 512x256
-            'w4': tf.Variable(tf.truncated_normal([n_hidden3, n_hidden4])), # 256x128
-            'w5': tf.Variable(tf.truncated_normal([n_hidden4, n_hidden5])), # 128x64
-            'out': tf.Variable(tf.truncated_normal([n_hidden5, n_output])) # 64x10
+            'w1': tf.Variable(tf.truncated_normal([n_input, n_hidden1], stddev=math.sqrt(2.0/(image_size*image_size)))), # 784x1024
+            'w2': tf.Variable(tf.truncated_normal([n_hidden1, n_hidden2], stddev=math.sqrt(2.0/(image_size*image_size)))), # 1024x512
+            'w3': tf.Variable(tf.truncated_normal([n_hidden2, n_hidden3], stddev=math.sqrt(2.0/(image_size*image_size)))), # 512x256
+            'w4': tf.Variable(tf.truncated_normal([n_hidden3, n_hidden4], stddev=math.sqrt(2.0/(image_size*image_size)))), # 256x128
+            'w5': tf.Variable(tf.truncated_normal([n_hidden4, n_hidden5], stddev=math.sqrt(2.0/(image_size*image_size)))), # 128x64
+            'out': tf.Variable(tf.truncated_normal([n_hidden5, n_output], stddev=math.sqrt(2.0/(image_size*image_size)))) # 64x10
             }
-        biases = {
+    biases = {
             'b1': tf.Variable(tf.zeros([n_hidden1])), 
             'b2': tf.Variable(tf.zeros([n_hidden2])), 
             'b3': tf.Variable(tf.zeros([n_hidden3])), 
@@ -402,7 +405,7 @@ with graph_dnn.as_default():
     logits_2 = tf.nn.dropout(logits_2, keep_prob)
     
     # Hidden Relu layer 3
-    logits_3 = tf.matmul(logits_2, weights['w3']) + biases['b2']
+    logits_3 = tf.matmul(logits_2, weights['w3']) + biases['b3']
     logits_3 = tf.nn.relu(logits_3)
     logits_3 = tf.nn.dropout(logits_3, keep_prob)
     
@@ -414,10 +417,10 @@ with graph_dnn.as_default():
     # Hidden Relu layer 5
     logits_5 = tf.matmul(logits_4, weights['w5']) + biases['b5']
     logits_5 = tf.nn.relu(logits_5)
-    logits_5 = tf.nn.droput(logits_5, keep_prob)
+    logits_5 = tf.nn.dropout(logits_5, keep_prob)
     
     # Output Layer
-    output = tf.matmul(logits_5, weightd['out']) + biases['out']
+    output_layer = tf.matmul(logits_5, weights['out']) + biases['out']
     
     # Normal loss function
     loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=tf_train_labels, logits=output_layer))
@@ -431,18 +434,18 @@ with graph_dnn.as_default():
     """ Optimizer """
     global_step = tf. Variable(0)
     start_learning_rate = 0.5
-    learning_rate = tf.train.exponential_decay(start_learning_rate, global_step, 100, 0.96, staricase = True)
+    learning_rate = tf.train.exponential_decay(start_learning_rate, global_step, 100, 0.96, staircase = True)
     optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss, global_step = global_step)
     
     # Predictions for training
-    train_prediction = tf.nn.softmax(output)
+    train_prediction = tf.nn.softmax(output_layer)
     
     # Predictions for validation
     valid_layer_1 = tf.nn.relu(tf.matmul(tf_valid_dataset, weights['w1']) + biases['b1'])
-    valid_layer_1 = tf.nn.relu(tf.matmul(tf_valid_dataset, weights['w2']) + biases['b2'])
-    valid_layer_1 = tf.nn.relu(tf.matmul(tf_valid_dataset, weights['w3']) + biases['b3'])
-    valid_layer_1 = tf.nn.relu(tf.matmul(tf_valid_dataset, weights['w4']) + biases['b4'])
-    valid_layer_1 = tf.nn.relu(tf.matmul(tf_valid_dataset, weights['w5']) + biases['b5'])
+    valid_layer_2 = tf.nn.relu(tf.matmul(valid_layer_1, weights['w2']) + biases['b2'])
+    valid_layer_3 = tf.nn.relu(tf.matmul(valid_layer_2, weights['w3']) + biases['b3'])
+    valid_layer_4 = tf.nn.relu(tf.matmul(valid_layer_3, weights['w4']) + biases['b4'])
+    valid_layer_5 = tf.nn.relu(tf.matmul(valid_layer_4, weights['w5']) + biases['b5'])
     valid_prediction = tf.nn.softmax(tf.matmul(valid_layer_5, weights['out']) + biases['out'])
     
     # Predictions for validation
@@ -452,3 +455,31 @@ with graph_dnn.as_default():
     test_layer_4 = tf.nn.relu(tf.matmul(test_layer_3, weights['w4']) + biases['b4'])
     test_layer_5 = tf.nn.relu(tf.matmul(test_layer_4, weights['w5']) + biases['b5'])
     test_prediction = tf.nn.softmax(tf.matmul(test_layer_5, weights['out']) + biases['out'])
+    
+num_steps = 15000
+valid_scores = {}
+
+with tf.Session(graph = graph_dnn) as session:
+    tf.initialize_all_variables().run()
+    print("Initialized")
+    for step in range(num_steps):
+        # Offset for batches
+        offset = (step * batch_size) % (train_labels.shape[0] - batch_size)
+        # Generate a minibatch
+        batch_data = train_dataset[offset:(offset + batch_size), :]
+        batch_labels = train_labels[offset:(offset + batch_size), :]
+        # Prepare a dictionary telling the session where to feed the minibatch.
+        # The key of the dictionary is the placeholder node of the graph to be fed,
+        # and the value is the numpy array to feed to it.
+        feed_dict = {tf_train_dataset : batch_data, tf_train_labels : batch_labels, keep_prob: dropout}
+        # Here only the batch that is generated will be fed to the 
+        # computational graph.
+        _, l, predictions = session.run([optimizer, loss, train_prediction], feed_dict=feed_dict)
+        if (step % 500 == 0):
+            print('Minibatch loss at step %d: %f' % (step, l))
+            print("Minibatch accuracy: %.1f%%" % accuracy(predictions, batch_labels))
+            print("Validation accuracy: %.1f%%" % accuracy(valid_prediction.eval(), valid_labels))
+            
+            valid_scores[step] = accuracy(valid_prediction.eval(), valid_labels)
+            
+    print("Test accuracy: %.1f%%" % accuracy(test_prediction.eval(), test_labels))
