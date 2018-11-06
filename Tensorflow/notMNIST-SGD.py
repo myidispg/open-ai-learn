@@ -432,7 +432,7 @@ with graph_dnn.as_default():
     loss = tf.reduce_mean(loss + beta * regularizers)
     
     """ Optimizer """
-    global_step = tf. Variable(0)
+    global_step = tf.Variable(0)
     start_learning_rate = 0.5
     learning_rate = tf.train.exponential_decay(start_learning_rate, global_step, 100, 0.96, staircase = True)
     optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss, global_step = global_step)
