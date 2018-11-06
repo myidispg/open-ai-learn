@@ -368,8 +368,23 @@ with graph.as_default():
     valid_prediction = tf.nn.softmax(model(tf_valid_dataset, 1.0))
     test_prediction = tf.nn.softmax(model(tf_test_dataset, 1.0))
     
-num_steps = 1001
+num_steps = 3001
 
+with tf.Session(graph=graph) as sess:
+    tf.global_variables_initializer().run()
+    print('Initialized')
+    for step in range(num_steps):
+        offset = (step*batch_size) % (train_labels.shape[0] - batch_size)
+        batch_data = train_dataset[offset:offset+batch_size, :, : :]
+        batch_labels = train_labels[offset: offset+batch_size, :]
+        feed_dict = {tf_train_dataset: batch_data, tf_train_labels: batch_labels}
+        _, l, predictions = sess.run([optimizer, loss, train_prediction], feed_dict=feed_dict)
+        
+        if (step%100==0):
+            print('Minibatch loss at step %d: %f' % (step, l))
+            print('Minibatch accuracy: %.1f%%' % accuracy(predictions, batch_labels))
+            print('Validation accuracy: %.1f%%' % accuracy(valid_prediction.eval(), valid_labels))
+    print('Test accuracy: %.1f%%' % accuracy(test_prediction.eval(), test_labels))
         
         
             
