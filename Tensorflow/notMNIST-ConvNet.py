@@ -321,14 +321,14 @@ with graph.as_default():
     size3 = ((image_size - patch_size + 1) // 2 - patch_size + 1) // 2 # ((28-5+1)//2 - 5 + 1) // 2 = 4
     weights = {
             'w1': tf.Variable(tf.truncated_normal([patch_size, patch_size, num_channels, depth], stddev = 0.1)),
-            'w2': tf.Variable(tf.truncated_normal([patch_size, patch_size, depth, depth], stddev=0.1)),
-            'w3': tf.Variable(tf.truncated_normal([size3 * size3 * depth, num_hidden], stddev = 0.1)), # 256x64
+            'w2': tf.Variable(tf.truncated_normal([patch_size, patch_size, depth, depth * 2], stddev=0.1)),
+            'w3': tf.Variable(tf.truncated_normal([size3 * size3 * depth *2 , num_hidden], stddev = 0.1)), # 256x64
             'w4': tf.Variable(tf.truncated_normal([num_hidden, num_hidden], stddev = 0.1)),
             'out': tf.Variable(tf.truncated_normal([num_hidden, num_labels], stddev=0.1))
             }
     biases = {
             'b1': tf.Variable(tf.zeros([depth])),
-            'b2': tf.Variable(tf.constant(1.0, shape=[depth])),
+            'b2': tf.Variable(tf.constant(1.0, shape=[depth * 2])),
             'b3': tf.Variable(tf.constant(1.0, shape=[num_hidden])),
             'b4': tf.Variable(tf.constant(1.0, shape=[num_hidden])),
             'out': tf.Variable(tf.constant(1.0, shape=[num_labels]))
@@ -368,7 +368,9 @@ with graph.as_default():
     valid_prediction = tf.nn.softmax(model(tf_valid_dataset, 1.0))
     test_prediction = tf.nn.softmax(model(tf_test_dataset, 1.0))
     
-num_steps = 3001
+num_steps = 5001
+
+validation_scores = {}
 
 with tf.Session(graph=graph) as sess:
     tf.global_variables_initializer().run()
@@ -384,6 +386,7 @@ with tf.Session(graph=graph) as sess:
             print('Minibatch loss at step %d: %f' % (step, l))
             print('Minibatch accuracy: %.1f%%' % accuracy(predictions, batch_labels))
             print('Validation accuracy: %.1f%%' % accuracy(valid_prediction.eval(), valid_labels))
+            validation_scores[step] = accuracy(valid_prediction.eval(), valid_labels)
     print('Test accuracy: %.1f%%' % accuracy(test_prediction.eval(), test_labels))
         
         
