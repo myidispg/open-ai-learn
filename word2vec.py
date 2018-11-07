@@ -91,15 +91,21 @@ def generate_batch(batch_size, num_skips, skip_window):
         buffer.append(data[data_index])
         data_index = (data_index + 1) % len(data) # This makes sure the index is always less than the len of data.
     for i in range(batch_size // num_skips): # 0,1,2,3
-        target = skip_window # target label at center of buffer
-        targets_to_avoid = [ skip_window ]
+        target = skip_window # target label around the middle word
+        targets_to_avoid = [ skip_window ] # 1, 0, 2, 3
         for j in range(num_skips): # 0,1
-            while target in targets_to_avoid:
-                target = random.randint(0, span - 1)
-            targets_to_avoid.append(target)
-            batch[i * num_skips + j] = buffer[skip_window]
+            while target in targets_to_avoid: # Loop till an index is found that is not in targets_to_avoid.
+                target = random.randint(0, span - 1) 
+            targets_to_avoid.append(target) # append new index to targets_to_avoid. Means the word is already used.
+            batch[i * num_skips + j] = buffer[skip_window] 
+            print('batch- ')
+            print(buffer[skip_window])
             labels[i * num_skips + j] = buffer[target]
+            print('label- ')
+            print(buffer[target])
         buffer.append(data[data_index])
+        print('buffer- ')
+        print(buffer)
         data_index = (data_index + 1) % len(data)
     return batch, labels
 

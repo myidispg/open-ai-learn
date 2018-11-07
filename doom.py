@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 import warnings # This ignore all the warning messages that are normally printed during the training because of skiimage
 warnings.filterwarnings('ignore')
 
-""" Create the environment """"
+""" Create the environment """
 
 def create_environment():
     game = DoomGame()
@@ -45,7 +45,7 @@ def create_environment():
 def test_environent():
     game = DoomGame()
     game.load_config("basic.cfg")
-    game.set_doom_scenario_path("basic.wad")
+    game.set_doom_scenario_path("basic.wad") # Map
     game.init()
     shoot = [0, 0, 1]
     left = [1, 0, 0]
@@ -54,20 +54,20 @@ def test_environent():
 
     episodes = 10
     for i in range(episodes):
-        game.new_episode()
-        while not game.is_episode_finished():
-            state = game.get_state()
-            img = state.screen_buffer()
-            misc = state.game_variables
-            action = random.choice(actions)
+        game.new_episode() # Start a new episode
+        while not game.is_episode_finished(): # While game is not over
+            state = game.get_state() # get current game state
+            img = state.screen_buffer() # get image of the game screen
+            misc = state.game_variables # Get certain variables from the game like health, ammo etc.
+            action = random.choice(actions) # Perform a random action
             print(action)
-            reward = game.make_action(action)
+            reward = game.make_action(action) # get the reward for the action.
             time.sleep(0.02)
         print ("Result:", game.get_total_reward())
-        time.sleep(2)
+        time.sleep(2) # Sleep so that the user can see what is going on.
     game.close()
     
-game, possible_actions = create_environment()
+game, possible_actions = create_environment() # Initialize the environment and get possible actions.
 
 """
     preprocess_frame:
@@ -101,17 +101,17 @@ def preprocess_frame(frame):
     # Normalize Pixel Values
     normalized_frame = cropped_frame/255.0
     
-    # Resize
-    preprocessed_frame = transform.resize(normalized_frame, [84,84])
+    # Resize to 84x84
+    preprocessed_frame = transform.resize(normalized_frame, [84,84]) 
     
     return preprocessed_frame
 
 stack_size = 4 # Stack 4 frames
 
-# Inititalize deque with zero images one array for each image
-stacked_frames = deque([np.zeros((84,84), dtype=int)] for i in range(stack_size)], max_len = 4)
+# Inititalize deque of length 4 with zeros as images one array for each image
+stacked_frames = deque([np.zeros((84,84), dtype=int) for i in range(stack_size)], max_len = 4)
     
-def stacked_frames(stacked_frames, state, is_new_episode):
+def stack_frames(stacked_frames, state, is_new_episode):
     # Preprocessed frames
     frame = preprocess_frame(state)
     
