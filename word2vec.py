@@ -45,27 +45,29 @@ def read_data(filename):
         data = tf.compat.as_str(f.read(f.namelist()[0])).split()
     return data
 
-words = read_data(filename)
+words = read_data(filename) # all the words in the zip file.
 print('Data size %d' % len(words))
 
-vocabulary_size = 50000
+vocabulary_size = 50000 # Number of unique words.
 
 def build_dataset(words):
     count = [['UNK', -1]]
     # Count occurence of each word and append to the list
     count.extend(collections.Counter(words).most_common(vocabulary_size -1))
+    # Since count is already sorted in decreasing order of occurence, 
     dictionary = dict() # dictionary has the rank of each word according to occurences.
     for word,_ in count:
-        dictionary[word] = len(dictionary)
-    data = list()
-    unk_count = 0
+        dictionary[word] = len(dictionary) # adds word from count
+        # rank is handled because the length of dictionary will always be equal to word's rank.
+    data = list() # Data is the list for rank's 
+    unk_count = 0 # count for unknown words.
     for word in words:
         if word in dictionary:
             index = dictionary[word]
         else:
             index = 0
-            unk_count += 1
-        data.append(index)
+            unk_count += 1 # the word is unknown, increase it's frequency.
+        data.append(index) # append rank to data list
     count[0][1] = unk_count
     reverse_dictionary = dict(zip(dictionary.values(), dictionary.keys()))
     return data, count, dictionary, reverse_dictionary
@@ -79,19 +81,19 @@ data_index = 0
 
 def generate_batch(batch_size, num_skips, skip_window):
     global data_index
-    assert batch_size % num_skips == 0
-    assert num_skips <= 2 * skip_window
-    batch = np.ndarray(shape=(batch_size), dtype = np.int32)
-    labels = np.ndarray(shape=(batch_size, 1), dtype = np.int32)
-    span = 2 * skip_window + 1 # skip window target skip window
-    buffer = collections.deque(maxlen = span)
+    assert batch_size % num_skips == 0 # To make sure that the window is evenly divisible by sentence length.
+    assert num_skips <= 2 * skip_window # To make sure that a word in window is not repeated.
+    batch = np.ndarray(shape=(batch_size), dtype = np.int32) # Shape will be (batch_size,)
+    labels = np.ndarray(shape=(batch_size, 1), dtype = np.int32) # Shape will be (batch_size, 1)
+    span = 2 * skip_window + 1 # the word window with both sides context length and middle word.
+    buffer = collections.deque(maxlen = span) # a buffer for storing words.
     for _ in range(span):
         buffer.append(data[data_index])
-        data_index = (data_index + 1) % len(data)
-    for i in range(batch_size // num_skips):
+        data_index = (data_index + 1) % len(data) # This makes sure the index is always less than the len of data.
+    for i in range(batch_size // num_skips): # 0,1,2,3
         target = skip_window # target label at center of buffer
         targets_to_avoid = [ skip_window ]
-        for j in range(num_skips):
+        for j in range(num_skips): # 0,1
             while target in targets_to_avoid:
                 target = random.randint(0, span - 1)
             targets_to_avoid.append(target)
@@ -112,8 +114,8 @@ for num_skips, skip_window in [(2, 1), (4, 2)]:
     
 batch_size = 128
 embedding_size = 128 # Dimensions of the embedding vector
-skip_window = 1 # How many words to consider left and right
-num_skips = 2 # How many times to reuse and input to generate a label.
+skip_window = 1 # How many words to consider left and right.
+num_skips = 2 # How many times to reuse an input to generate a label. FOr an input word, num_skips times a context word will be used.
 # We pick a random validation set to sample nearest neighbors. Here we limit the 
 # validation samples to the words that have low numeric ID, which by construction are also the most frequent.
 
